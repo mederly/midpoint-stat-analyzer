@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.evolveum.midpoint.analyzer;
+package com.evolveum.midpoint.analyzer.misc;
 
 import java.io.*;
 import java.text.ParseException;

@@ -14,30 +14,32 @@
  * limitations under the License.
  */
 
-package com.evolveum.midpoint.analyzer;
+package com.evolveum.midpoint.analyzer.util;
 
+import com.evolveum.midpoint.analyzer.Constants;
 import com.evolveum.midpoint.util.logging.Trace;
 import com.evolveum.midpoint.util.logging.TraceManager;
 import org.apache.commons.io.FileUtils;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import static com.evolveum.midpoint.analyzer.ProfilingLogAnalyzer.LOG_FILE_TIMESTAMP_FORMAT;
-
 /**
- *
+ * Reads a set of log files. Provides virtual readLine() method that returns the next line,
+ * irrespective on the log file it resides in.
  */
-public class ProfilingLogReader {
+public class LogLineReader {
 
-	private static final Trace LOGGER = TraceManager.getTrace(ProfilingLogReader.class);
+	private static final Trace LOGGER = TraceManager.getTrace(LogLineReader.class);
 
-	private List<LogFileInfo> files;
 	private Iterator<LogFileInfo> fileIterator;
-	private BufferedReader reader = null;
+	private LogFileInfo currentFileInfo;
+	private BufferedReader reader;
+	private int lineNumber;
 
-	ProfilingLogReader(File directory) throws IOException {
+	public LogLineReader(File directory) throws IOException {
 		scanFiles(directory);
 	}
 
@@ -51,9 +53,33 @@ public class ProfilingLogReader {
 		}
 	}
 
+	public static class LogFilePosition {
+		@NotNull private final File file;
+		private final int lineNumber;
+
+		public LogFilePosition(@NotNull File file, int lineNumber) {
+			this.file = file;
+			this.lineNumber = lineNumber;
+		}
+
+		@NotNull
+		public File getFile() {
+			return file;
+		}
+
+		public int getLineNumber() {
+			return lineNumber;
+		}
+
+		@Override
+		public String toString() {
+			return "[" + file + ":" + lineNumber + ']';
+		}
+	}
+
 	private void scanFiles(File directory) throws IOException {
-		SimpleDateFormat df = new SimpleDateFormat(LOG_FILE_TIMESTAMP_FORMAT, Locale.US);
-		files = new ArrayList<>();
+		SimpleDateFormat df = new SimpleDateFormat(Constants.LOG_FILE_TIMESTAMP_FORMAT, Locale.US);
+		List<LogFileInfo> files = new ArrayList<>();
 		Iterator<File> iterator = FileUtils.iterateFiles(directory, null, true);
 		while (iterator.hasNext()) {
 			File file = iterator.next();
@@ -67,7 +93,7 @@ public class ProfilingLogReader {
 				String timestamp = firstLine.substring(0, 23);
 				Date date = df.parse(timestamp);
 				files.add(new LogFileInfo(file, date.getTime()));
-			} catch (Throwable t) {
+			} catch (Throwable t) { // fix this :)
 				LOGGER.warn("Cannot parse log file {}, skipping", file, t);
 			}
 		}
@@ -75,24 +101,36 @@ public class ProfilingLogReader {
 		fileIterator = files.iterator();
 	}
 
-	String readLine() throws IOException {
+	public String readLine() throws IOException {
 		for (;;) {
 			if (reader == null) {
 				if (fileIterator.hasNext()) {
-					File file = fileIterator.next().file;
+					currentFileInfo = fileIterator.next();
+					File file = currentFileInfo.file;
 					LOGGER.info("Opening file {}", file);
 					reader = new BufferedReader(new FileReader(file));
+					lineNumber = 0;
 				} else {
+					currentFileInfo = null;
 					return null;
 				}
 			}
 			String line = reader.readLine();
 			if (line != null) {
+				lineNumber++;
 				return line;
 			} else {
 				reader.close();
 				reader = null;
 			}
+		}
+	}
+
+	public LogFilePosition getCurrentPosition() {
+		if (currentFileInfo != null) {
+			return new LogFilePosition(currentFileInfo.file, lineNumber);
+		} else {
+			return null;
 		}
 	}
 }

@@ -39,7 +39,7 @@
 
         <midpoint.version>${project.version}</midpoint.version>
 
-        <main.class>com.evolveum.midpoint.analyzer.TaskSetAnalyzer</main.class>
+        <main.class>com.evolveum.midpoint.analyzer.tasks.TaskSetAnalyzer</main.class>
     </properties>
 
     <repositories>
