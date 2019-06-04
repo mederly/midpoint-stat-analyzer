@@ -42,22 +42,30 @@ public class ProfilingLogAnalyzer {
 
 	private static final Trace LOGGER = TraceManager.getTrace(ProfilingLogAnalyzer.class);
 
-	private static final String RUN = "local-11";
+	private static final String RUN = "local-14";
+	private static final Integer BATCH_FROM = 3;
+	private static final Integer BATCH_TO = null;
+	@SuppressWarnings("ConstantConditions")
+	private static final String BATCH_DESC = BATCH_FROM != null && BATCH_TO != null ? "-"+BATCH_FROM+"-"+BATCH_TO :
+			(BATCH_FROM != null ? "-"+BATCH_FROM+"-end" : (BATCH_TO != null ? "-begin-" + BATCH_TO : ""));
+
 
 	private static final File DIRECTORY = new File("d:\\midpoint\\tmp\\uwo-slowing-recon\\" + RUN + "\\logs\\");
-	private static final File ALL_INVOCATIONS_FILE = new File(DIRECTORY, "../invocations-all.txt");
-	private static final File SELECTED_INVOCATIONS_FILE = new File(DIRECTORY, "../invocations-selected.csv");
-	private static final File OBJECTS_PER_MINUTE_FILE = new File(DIRECTORY, "../per-minute.csv");
-	private static final String LONG_INVOCATIONS_TXT_FILE_NAME_FORMAT = "../invocations-long-%d.txt";
-	private static final String LONG_INVOCATIONS_CSV_FILE_NAME_FORMAT = "../invocations-long-%d.csv";
-	private static final String PERFORMANCE_HISTOGRAM_FILE_NAME_FORMAT = "../methods-performance-histogram-%d%s%s.csv";
-	private static final String SLOW_QUERY_CATEGORY_COUNTS_FILE_NAME_FORMAT = "../slow-query-category-counts-%d.csv";
+	private static final File ALL_INVOCATIONS_FILE = new File(DIRECTORY, "../invocations-all" + BATCH_DESC + ".txt");
+	private static final File SELECTED_INVOCATIONS_FILE = new File(DIRECTORY, "../invocations-selected" + BATCH_DESC + ".csv");
+	private static final File OBJECTS_PER_MINUTE_FILE = new File(DIRECTORY, "../per-minute" + BATCH_DESC + ".csv");
+	private static final String LONG_INVOCATIONS_TXT_FILE_NAME_FORMAT = "../invocations-long-%d" + BATCH_DESC + ".txt";
+	private static final String LONG_INVOCATIONS_CSV_FILE_NAME_FORMAT = "../invocations-long-%d" + BATCH_DESC + ".csv";
+	private static final String PERFORMANCE_HISTOGRAM_FILE_NAME_FORMAT = "../methods-performance-histogram-%d%s%s" + BATCH_DESC + ".csv";
+	private static final String SLOW_QUERY_CATEGORY_COUNTS_FILE_NAME_FORMAT = "../slow-query-category-counts-%d" + BATCH_DESC + ".csv";
 
 	private static final long HISTOGRAM_STEP = 10_000L;                         // in microseconds
 	private static final long HISTOGRAM_UPPER_BOUNDARY = 1_000_000L;            // in microseconds
-	private static final long LONG_TIMES_THRESHOLD = 50_000L;                   // in microseconds
+	private static final long LONG_TIMES_THRESHOLD = 20_000L;                   // in microseconds
 
+	@SuppressWarnings("FieldCanBeLocal")
 	private static boolean HISTOGRAM_PER_BATCH = false;
+	@SuppressWarnings("FieldCanBeLocal")
 	private static boolean HISTOGRAM_PER_THREAD_TYPE = true;
 
 	private static final List<String> MAIN_METHODS = Arrays.asList(
@@ -146,6 +154,14 @@ public class ProfilingLogAnalyzer {
 
 		ProfilingItem item;
 		while ((item = profilingEntryReader.readItem()) != null) {
+
+			//noinspection ConstantConditions
+			if (BATCH_FROM != null && item.batch < BATCH_FROM) {
+				continue;
+			} else //noinspection ConstantConditions
+				if (BATCH_TO != null && item.batch > BATCH_TO) {
+				continue;
+			}
 
 			// generally useful information
 			String threadName = item.getThreadName();
